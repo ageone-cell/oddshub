@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07090f;
+  --panel: #0c1018;
+  --border: #182030;
+  --green: #00e676;
+  --gold: #ffc400;
+  --text: #d8e4ff;
+  --dim: #4a5a7a;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  min-height: 100vh;
+}
+
+button { font-family: inherit; cursor: pointer; }
+input  { font-family: inherit; }
+
+/* Spinner */
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+.spin    { display:inline-block; animation: spin 1.2s linear infinite; }
+.fadeIn  { animation: fadeIn 0.3s ease both; }
+.pulse   { animation: pulse 1.5s ease-in-out infinite; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Hover states */
+.matchRow:hover  { border-color: var(--green) !important; background: rgba(0,230,118,0.04) !important; }
+.countryBtn:hover { background: rgba(0,230,118,0.05) !important; }
+.leagueBtn:hover  { color: var(--text) !important; }
+.dropRow:hover    { background: rgba(0,230,118,0.05) !important; }
+.refreshBtn:hover { border-color: var(--green) !important; }
