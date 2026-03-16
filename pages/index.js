@@ -2,15 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 
 const BOOKMAKERS = [
-  { id: "odibets",    name: "OdiBets",    color: "#e8b400" },
-  { id: "betika",     name: "Betika",     color: "#00b140" },
-  { id: "sportybet",  name: "SportyBet",  color: "#ff6b00" },
-  { id: "betgr8",     name: "BetGr8",     color: "#00aaff" },
-  { id: "sportpesa",  name: "SportPesa",  color: "#1a8cff" },
-  { id: "betway",     name: "Betway",     color: "#00af41" },
-  { id: "mozzartbet", name: "MozzartBet", color: "#cc0000" },
-  { id: "betwinner",  name: "BetWinner",  color: "#f4a900" },
-  { id: "1xbet",      name: "1xBet",      color: "#1560bd" },
+  { id: "betway",        name: "Betway",        color: "#00af41" },
+  { id: "onexbet",       name: "1xBet",         color: "#1560bd" },
+  { id: "unibet",        name: "Unibet",        color: "#007b5e" },
+  { id: "william_hill",  name: "William Hill",  color: "#6a0dad" },
+  { id: "bwin",          name: "Bwin",          color: "#e8b400" },
+  { id: "marathonbet",   name: "MarathonBet",   color: "#ff6b00" },
+  { id: "betfair_ex_eu", name: "Betfair",       color: "#00aaff" },
+  { id: "pinnacle",      name: "Pinnacle",      color: "#cc0000" },
 ];
 
 function findBest(oddsData, market) {
