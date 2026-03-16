@@ -5,7 +5,7 @@ const LEAGUE_IDS = {
   ucl:        { code: "CL",  name: "Champions League",  logo: "⭐", country: "UEFA Competitions", flag: "🏆" },
   uel:        { code: "EL",  name: "Europa League",     logo: "🔶", country: "UEFA Competitions", flag: "🏆" },
   uecl:       { code: "ECL", name: "Conference League", logo: "🔷", country: "UEFA Competitions", flag: "🏆" },
-  epl:        { code: "PL",  name: "Premier League",    logo: "🦁", country: "England",            flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+  epl:        { code: "PL",  name: "Premier League",    logo: "🦁", country: "England",            flag: "EN" },
   laliga:     { code: "PD",  name: "La Liga",           logo: "🌟", country: "Spain",              flag: "🇪🇸" },
   bundesliga: { code: "BL1", name: "Bundesliga",        logo: "🦅", country: "Germany",            flag: "🇩🇪" },
   seriea:     { code: "SA",  name: "Serie A",           logo: "🐉", country: "Italy",              flag: "🇮🇹" },
