@@ -1,94 +1,93 @@
 // pages/api/odds.js
-// Increase Vercel timeout — the AI web search takes 20–40 seconds
-export const config = { maxDuration: 60 };
+// Uses The Odds API (the-odds-api.com) — free tier: 500 requests/month
+
+const LEAGUE_TO_SPORT = {
+  "Champions League":  "soccer_uefa_champs_league",
+  "Europa League":     "soccer_uefa_europa_league",
+  "Conference League": "soccer_uefa_europa_conference_league",
+  "Premier League":    "soccer_epl",
+  "La Liga":           "soccer_spain_la_liga",
+  "Bundesliga":        "soccer_germany_bundesliga",
+  "Serie A":           "soccer_italy_serie_a",
+  "Ligue 1":           "soccer_france_ligue_one",
+  "Eredivisie":        "soccer_netherlands_eredivisie",
+  "Primeira Liga":     "soccer_portugal_primeira_liga",
+};
+
+const BOOKMAKER_KEYS = [
+  "betway", "onexbet", "unibet",
+  "william_hill", "bwin", "marathonbet",
+  "betfair_ex_eu", "pinnacle",
+];
+
+function normalize(str) {
+  return str.toLowerCase().replace(/\s+(fc|sc|ac|cf|afc|bfc|sfc|united|city|town|rovers)$/i, "").replace(/[^a-z0-9]/g, "").trim();
+}
+
+function teamsMatch(a, b) {
+  const na = normalize(a), nb = normalize(b);
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
   const { home, away, leagueName } = req.body;
   if (!home || !away) return res.status(400).json({ error: "Missing match details" });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
+  const apiKey = process.env.ODDS_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "ODDS_API_KEY not configured in Vercel environment variables" });
 
-  const prompt = `You must search the web right now to find current betting odds for: "${home} vs ${away}" (${leagueName}).
-
-Search these specific Kenya bookmaker websites for 1X2 odds on this match:
-1. Search "sportybet kenya ${home} ${away} odds"
-2. Search "betika ${home} ${away} odds"
-3. Search "betway kenya ${home} ${away} odds"
-4. Search "sportpesa ${home} ${away} odds"
-5. Search "1xbet kenya ${home} ${away} odds"
-6. Search "odibets ${home} ${away} odds"
-7. Search "betwinner ${home} ${away} odds"
-8. Search "mozzartbet ${home} ${away} odds"
-9. Also search oddsportal.com and flashscore.com for "${home} vs ${away}"
-
-After searching, return ONLY a raw JSON object. No markdown, no backticks, no explanation:
-
-{
-  "home": "${home}",
-  "away": "${away}",
-  "league": "${leagueName}",
-  "source_note": "where you found the odds",
-  "bookmakers": {
-    "odibets":    {"1": null, "X": null, "2": null},
-    "betika":     {"1": null, "X": null, "2": null},
-    "sportybet":  {"1": null, "X": null, "2": null},
-    "betgr8":     {"1": null, "X": null, "2": null},
-    "sportpesa":  {"1": null, "X": null, "2": null},
-    "betway":     {"1": null, "X": null, "2": null},
-    "mozzartbet": {"1": null, "X": null, "2": null},
-    "betwinner":  {"1": null, "X": null, "2": null},
-    "1xbet":      {"1": null, "X": null, "2": null}
-  }
-}
-
-Replace null with the actual decimal odd found. Keep null if not found. Never invent odds.`;
+  const sportKey = LEAGUE_TO_SPORT[leagueName];
+  if (!sportKey) return res.status(200).json({ home, away, league: leagueName, source_note: `League "${leagueName}" not mapped`, bookmakers: Object.fromEntries(BOOKMAKER_KEYS.map(k => [k, {"1":null,"X":null,"2":null}])) });
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?apiKey=${apiKey}&regions=eu,uk&markets=h2h&oddsFormat=decimal&bookmakers=${BOOKMAKER_KEYS.join(",")}`;
+    const response = await fetch(url);
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(500).json({ error: `Anthropic API error ${response.status}: ${errText.slice(0,200)}` });
+      return res.status(500).json({ error: `Odds API ${response.status}: ${errText.slice(0,200)}` });
     }
 
-    const data = await response.json();
-    if (data.error) return res.status(500).json({ error: data.error.message });
+    const events = await response.json();
 
-    const textBlocks = (data.content || []).filter(b => b.type === "text");
-    if (!textBlocks.length) return res.status(500).json({ error: "No text response from AI" });
+    const event = events.find(e =>
+      (teamsMatch(e.home_team, home) && teamsMatch(e.away_team, away)) ||
+      (teamsMatch(e.home_team, away) && teamsMatch(e.away_team, home))
+    );
 
-    let text = textBlocks[textBlocks.length - 1].text.trim().replace(/```json|```/gi, "").trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.status(500).json({ error: "Could not parse AI response", raw: text.slice(0,300) });
+    const emptyBookmakers = Object.fromEntries(BOOKMAKER_KEYS.map(k => [k, {"1":null,"X":null,"2":null}]));
 
-    const oddsData = JSON.parse(jsonMatch[0]);
-
-    // Sanitize values
-    for (const bm of Object.keys(oddsData.bookmakers || {})) {
-      for (const mkt of ["1", "X", "2"]) {
-        const v = oddsData.bookmakers[bm][mkt];
-        oddsData.bookmakers[bm][mkt] = (v && !isNaN(Number(v)) && Number(v) > 1) ? Number(v) : null;
-      }
+    if (!event) {
+      return res.status(200).json({ home, away, league: leagueName, source_note: `Match not listed yet on The Odds API — usually appears 1-7 days before kick-off.`, bookmakers: emptyBookmakers });
     }
 
-    return res.status(200).json(oddsData);
+    const isFlipped = teamsMatch(event.home_team, away);
+    const bookmakers = { ...emptyBookmakers };
+
+    for (const bm of (event.bookmakers || [])) {
+      const h2h = bm.markets?.find(m => m.key === "h2h");
+      if (!h2h) continue;
+      const outcomes = h2h.outcomes || [];
+      const homeOut = outcomes.find(o => teamsMatch(o.name, isFlipped ? away : home));
+      const awayOut = outcomes.find(o => teamsMatch(o.name, isFlipped ? home : away));
+      const drawOut = outcomes.find(o => o.name === "Draw");
+      bookmakers[bm.key] = {
+        "1": homeOut?.price || null,
+        "X": drawOut?.price || null,
+        "2": awayOut?.price || null,
+      };
+    }
+
+    const found = Object.values(bookmakers).filter(b => b["1"]).length;
+    return res.status(200).json({
+      home: event.home_team, away: event.away_team, league: leagueName,
+      commence_time: event.commence_time,
+      source_note: `Real-time odds via The Odds API · ${found}/${BOOKMAKER_KEYS.length} bookmakers listed`,
+      bookmakers,
+    });
+
   } catch (err) {
-    return res.status(500).json({ error: err.message || "Unknown error" });
+    return res.status(500).json({ error: err.message });
   }
 }
